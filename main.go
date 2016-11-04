@@ -32,6 +32,7 @@ func main() {
 
 	r.HandleFunc("/auth/{provider}", authHandler)
 	r.HandleFunc("/auth/{provider}/callback", sessionCreateHandler)
+	r.HandleFunc("/logout", logoutHandler)
 
 	http.Handle("/", r)
 	http.ListenAndServe(":8080", nil)
@@ -61,6 +62,18 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		gothic.BeginAuthHandler(w, r)
 	}
 	http.Redirect(w, r, "/bulletin-board", http.StatusFound)
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, SessionName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	session.Values["user-id"] = nil
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func sessionCreateHandler(w http.ResponseWriter, r *http.Request) {
