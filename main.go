@@ -7,13 +7,17 @@ import (
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/twitter"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 )
 
-var store = sessions.NewCookieStore([]byte(os.Getenv("SECRET_KEY")))
+var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
+
+const SessionName = "_bulletin_board_session"
 
 func init() {
+	gothic.Store = store
 	goth.UseProviders(
 		twitter.New(os.Getenv("TWITTER_KEY"),
 			os.Getenv("TWITTER_SECRET"),
@@ -26,7 +30,7 @@ func main() {
 	r.HandleFunc("/", homeHandler)
 	r.HandleFunc("/bulletin-board", bulletinBoardHandler)
 
-	r.HandleFunc("/auth/{provider}", gothic.BeginAuthHandler)
+	r.HandleFunc("/auth/{provider}", authHandler)
 	r.HandleFunc("/auth/{provider}/callback", sessionCreateHandler)
 
 	http.Handle("/", r)
@@ -40,18 +44,46 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func bulletinBoardHandler(w http.ResponseWriter, r *http.Request) {
+	authenticate(w, r)
+
 	tmpl, _ := template.ParseFiles("static/bulletin-board.html")
 	tmpl.Execute(w, nil)
 }
 
-func sessionCreateHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := store.Get(r, "_bulletin_board_session")
+func authHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, SessionName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	session.Values["user-id"] = 1
+	userId := session.Values["user-id"]
+	if userId == nil {
+		gothic.BeginAuthHandler(w, r)
+	}
+	http.Redirect(w, r, "/bulletin-board", http.StatusFound)
+}
+
+func sessionCreateHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, SessionName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	session.Values["user-id"] = 100
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/bulletin-board", http.StatusFound)
+}
+
+func authenticate(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, SessionName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	userId := session.Values["user-id"]
+	if userId == nil {
+		log.Print(userId)
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
 }
