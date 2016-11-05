@@ -21,7 +21,7 @@ func init() {
 	goth.UseProviders(
 		twitter.New(os.Getenv("TWITTER_KEY"),
 			os.Getenv("TWITTER_SECRET"),
-			"http://localhost:8080/auth/twitter/callback?provider=twitter"),
+			"http://localhost:8080/auth/callback?provider=twitter"),
 	)
 }
 
@@ -30,8 +30,8 @@ func main() {
 	r.HandleFunc("/", homeHandler)
 	r.HandleFunc("/bulletin-board", bulletinBoardHandler)
 
-	r.HandleFunc("/auth/{provider}", authHandler)
-	r.HandleFunc("/auth/{provider}/callback", sessionCreateHandler)
+	r.HandleFunc("/auth", authHandler)
+	r.HandleFunc("/auth/callback", sessionCreateHandler)
 	r.HandleFunc("/logout", logoutHandler)
 
 	http.Handle("/", r)
