@@ -101,7 +101,6 @@ func sessionCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session.Values["user_id"] = currentUser.ID
-	session.Values["access_token"] = user.AccessToken
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/", http.StatusFound)
@@ -130,44 +129,24 @@ type User struct {
 }
 
 // auth
-func BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
-	url := GetAuthURL(res, req)
-	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
-}
-
-var SetState = func(req *http.Request) string {
-	state := req.URL.Query().Get("state")
-	if len(state) > 0 {
-		return state
-	}
-	return "state"
-}
-
-func GetAuthURL(res http.ResponseWriter, req *http.Request) string {
-	providerName := GetProviderName(req)
+func BeginAuthHandler(w http.ResponseWriter, r *http.Request) {
+	providerName := r.URL.Query().Get("provider")
 	provider, _ := goth.GetProvider(providerName)
-	sess, _ := provider.BeginAuth(SetState(req))
+	sess, _ := provider.BeginAuth("")
 	url, _ := sess.GetAuthURL()
-	session, _ := store.Get(req, SessionName)
+	session, _ := store.Get(r, SessionName)
 	session.Values[SessionName] = sess.Marshal()
-	session.Save(req, res)
+	session.Save(r, w)
 
-	return url
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-var CompleteUserAuth = func(res http.ResponseWriter, req *http.Request) (goth.User, error) {
-	providerName := GetProviderName(req)
+var CompleteUserAuth = func(w http.ResponseWriter, r *http.Request) (goth.User, error) {
+	providerName := r.URL.Query().Get("provider")
 	provider, _ := goth.GetProvider(providerName)
-	session, _ := store.Get(req, SessionName)
+	session, _ := store.Get(r, SessionName)
 	sess, _ := provider.UnmarshalSession(session.Values[SessionName].(string))
-	sess.Authorize(provider, req.URL.Query())
+	sess.Authorize(provider, r.URL.Query())
 
 	return provider.FetchUser(sess)
-}
-
-var GetProviderName = getProviderName
-
-func getProviderName(req *http.Request) string {
-	provider := req.URL.Query().Get("provider")
-	return provider
 }
