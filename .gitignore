@@ -2,3 +2,5 @@
 
 /.envrc
 /tmp
+/development.db
+/main
