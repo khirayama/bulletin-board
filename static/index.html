@@ -1,10 +1,43 @@
 <html>
   <head>
     <title>Bulletin board</title>
-    <script src="jquery.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
   </head>
   <body>
     <h1>Bulletin board</h1>
-    <a href="/auth?provider=twitter">Sign up / in with Twitter</a>
+    <a href="/auth?provider=twitter" target="_blank">Sign up / in with Twitter</a>
+    <script>
+$(() => {
+  if (window.opener) {
+    window.opener.location = '/bulletin-board';
+    window.close();
+  } else {
+    $('a').on('click', (event) => {
+      event.preventDefault();
+      const w = 500;
+      const h = 500;
+      const width = window.screen.width;
+      const height = window.screen.height;
+      window.open(
+        event.target.href,
+        '_blank',
+        `
+          top=${(height - h)/2},
+          left=${(width - w)/2},
+          width=${w},
+          height=${h},
+          toolbar=0,
+          location=0,
+          directories=0,
+          status=0,
+          menubar=0,
+          scrollbars=1,
+          resizable=0
+        `
+      );
+    });
+  }
+});
+    </script>
   </body>
 </html>

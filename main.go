@@ -61,7 +61,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	if userId == nil {
 		gothic.BeginAuthHandler(w, r)
 	}
-	http.Redirect(w, r, "/bulletin-board", http.StatusFound)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +85,7 @@ func sessionCreateHandler(w http.ResponseWriter, r *http.Request) {
 	session.Values["user-id"] = 100
 	session.Save(r, w)
 
-	http.Redirect(w, r, "/bulletin-board", http.StatusFound)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func authenticate(w http.ResponseWriter, r *http.Request) {
