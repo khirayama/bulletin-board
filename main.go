@@ -6,7 +6,6 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/markbates/goth"
-	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/twitter"
 	"html/template"
 	"log"
@@ -20,7 +19,6 @@ var db, _ = gorm.Open("sqlite3", "development.db")
 const SessionName = "_bulletin_board_session"
 
 func init() {
-	gothic.Store = store
 	goth.UseProviders(
 		twitter.New(os.Getenv("TWITTER_KEY"),
 			os.Getenv("TWITTER_SECRET"),
@@ -64,7 +62,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	userId := session.Values["user_id"]
 	if userId == nil {
-		gothic.BeginAuthHandler(w, r)
+		BeginAuthHandler(w, r)
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -82,7 +80,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func sessionCreateHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := gothic.CompleteUserAuth(w, r)
+	user, err := CompleteUserAuth(w, r)
 	if err != nil {
 		panic(err)
 	}
@@ -129,4 +127,47 @@ type User struct {
 	Uid      string
 	Nickname string
 	ImageUrl string
+}
+
+// auth
+func BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
+	url := GetAuthURL(res, req)
+	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
+}
+
+var SetState = func(req *http.Request) string {
+	state := req.URL.Query().Get("state")
+	if len(state) > 0 {
+		return state
+	}
+	return "state"
+}
+
+func GetAuthURL(res http.ResponseWriter, req *http.Request) string {
+	providerName := GetProviderName(req)
+	provider, _ := goth.GetProvider(providerName)
+	sess, _ := provider.BeginAuth(SetState(req))
+	url, _ := sess.GetAuthURL()
+	session, _ := store.Get(req, SessionName)
+	session.Values[SessionName] = sess.Marshal()
+	session.Save(req, res)
+
+	return url
+}
+
+var CompleteUserAuth = func(res http.ResponseWriter, req *http.Request) (goth.User, error) {
+	providerName := GetProviderName(req)
+	provider, _ := goth.GetProvider(providerName)
+	session, _ := store.Get(req, SessionName)
+	sess, _ := provider.UnmarshalSession(session.Values[SessionName].(string))
+	sess.Authorize(provider, req.URL.Query())
+
+	return provider.FetchUser(sess)
+}
+
+var GetProviderName = getProviderName
+
+func getProviderName(req *http.Request) string {
+	provider := req.URL.Query().Get("provider")
+	return provider
 }
