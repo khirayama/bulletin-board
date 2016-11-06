@@ -16,7 +16,6 @@
 
     <div id="message-update-form">
       text: <input name="text" type="text" />
-      name: <input name="name" type="text" />
       <input name="id" type="hidden" />
       <div id="message-update-btn">[UPDATE]</div>
     </div>
@@ -62,9 +61,12 @@
 
       function createMessage(callback) {
         var data = generateRequestData('#message-create-form');
+        if (!data.text) {
+          return;
+        }
         $.ajax({
           type: 'POST',
-          url: '/messages',
+          url: '/api/v1/messages',
           contentType: 'application/json',
           data: JSON.stringify(data)
         }).done(function (res) {
@@ -98,16 +100,15 @@
       // helper
       function generateRequestData(formSelecter) {
         var $form = $(formSelecter)
-        var name = $form.find('input[name=name]').val();
-        var text = $form.find('input[name=text]').val();
-        return { name: name, text: text };
+        var text = $form.find('input[name=text]').val().trim();
+        return { text: text };
       }
 
       // DOM
       function renderMessageList(messages) {
         if (!messages) messages = [];
         var liHTMLString = messages.map(function (message) {
-          return '<li>' + message.text + ' / ' + message.name + '<span class="message-delete-btn" data-id=" '+ message.id + '">[DELETE]</span><span class="message-edit-btn" data-id="' + message.id + '">[EDIT]</span></li>';
+          return '<li>' + message.text + '<span class="message-delete-btn" data-id=" '+ message.id + '">[DELETE]</span><span class="message-edit-btn" data-id="' + message.id + '">[EDIT]</span></li>';
         });
         $('#message-list').html(liHTMLString);
         setMessageDeleteBtnEventHandler();
