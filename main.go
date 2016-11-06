@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/twitter"
 	"html/template"
 	"log"
@@ -62,7 +64,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	userId := session.Values["user_id"]
 	if userId == nil {
-		BeginAuthHandler(w, r)
+		gothic.BeginAuthHandler(w, r)
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -80,7 +82,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func sessionCreateHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := CompleteUserAuth(w, r)
+	user, err := gothic.CompleteUserAuth(w, r)
 	if err != nil {
 		panic(err)
 	}
@@ -90,6 +92,7 @@ func sessionCreateHandler(w http.ResponseWriter, r *http.Request) {
 		Nickname: user.NickName,
 		ImageUrl: user.AvatarURL,
 	}
+
 	db.Where("provider = ? AND uid = ?", user.Provider, user.UserID).Find(&currentUser)
 	if db.NewRecord(currentUser) {
 		db.Create(currentUser)
@@ -126,27 +129,4 @@ type User struct {
 	Uid      string
 	Nickname string
 	ImageUrl string
-}
-
-// auth
-func BeginAuthHandler(w http.ResponseWriter, r *http.Request) {
-	providerName := r.URL.Query().Get("provider")
-	provider, _ := goth.GetProvider(providerName)
-	sess, _ := provider.BeginAuth("")
-	url, _ := sess.GetAuthURL()
-	session, _ := store.Get(r, SessionName)
-	session.Values[SessionName] = sess.Marshal()
-	session.Save(r, w)
-
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-}
-
-var CompleteUserAuth = func(w http.ResponseWriter, r *http.Request) (goth.User, error) {
-	providerName := r.URL.Query().Get("provider")
-	provider, _ := goth.GetProvider(providerName)
-	session, _ := store.Get(r, SessionName)
-	sess, _ := provider.UnmarshalSession(session.Values[SessionName].(string))
-	sess.Authorize(provider, r.URL.Query())
-
-	return provider.FetchUser(sess)
 }
