@@ -9,7 +9,6 @@
 
     <div id="message-create-form">
       text: <input name="text" type="text" />
-      name: <input name="name" type="text" />
       <div id="message-create-btn">[CREATE]</div>
     </div>
 
@@ -46,7 +45,7 @@
       function fetchMessages(callback) {
         $.ajax({
           type: 'GET',
-          url: '/messages'
+          url: '/api/v1/messages'
         }).done(function (res) {
           if (callback) callback(res);
         });

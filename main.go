@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/jinzhu/gorm"
@@ -37,6 +38,8 @@ func main() {
 	r.HandleFunc("/auth", authHandler)
 	r.HandleFunc("/auth/callback", sessionCreateHandler)
 	r.HandleFunc("/logout", logoutHandler)
+
+	r.HandleFunc("/api/v1/messages", messagesHandler)
 
 	http.Handle("/", r)
 	http.ListenAndServe(":8080", nil)
@@ -121,6 +124,26 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// api handlers
+func messagesHandler(w http.ResponseWriter, r *http.Request) {
+	authenticate(w, r)
+
+	session, err := store.Get(r, SessionName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var user User
+	db.First(&user, session.Values["user_id"])
+
+	var messages []Message
+	db.Model(&user).Related(&messages)
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(messages)
+}
+
 // models
 type User struct {
 	gorm.Model
@@ -128,4 +151,12 @@ type User struct {
 	Uid      string
 	Nickname string
 	ImageUrl string
+
+	Messages []Message
+}
+
+type Message struct {
+	gorm.Model
+	Text   string
+	UserID uint
 }
